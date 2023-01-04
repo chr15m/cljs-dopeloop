@@ -1,0 +1,12 @@
+{
+  "name": "cljs-dopeloop",
+  "version": "0.0.1",
+  "description": "ClojureScript webaudio utils",
+  "homepage": "https://github.com/chr15m/cljs-dopeloop",
+  "keywords": [
+    "webaudio",
+    "looper",
+    "util",
+    "clojurescript"
+  ]
+}
