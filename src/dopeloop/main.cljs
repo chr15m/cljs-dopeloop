@@ -22,6 +22,16 @@
       (let [array-buffer (.getChannelData audio-buffer b)]
         (.copyToChannel array-buffer (nth arrays b) b)))))
 
+; *** iOS Safari detection *** ;
+
+(defn on-ios?
+  "Returns true if the current platform is an iOS device."
+  []
+  (or (= (.indexOf (aget js/navigator "platform") "iP") 0)
+      (and
+        (-> js/navigator .-userAgent (.includes "Mac"))
+        (not= (type (aget js/document "ontouchend")) "undefined"))))
+
 ; *** seamless looping of audio buffers *** ;
 
 (defn loop-audio-buffer!
@@ -45,7 +55,7 @@
     (.stop src 0))
   nil)
 
-(defn compute-offset
+(defn compute-seamless-loop-offset
   "Compute the offset to start a new loop from so that it matches the old loop.
   The two loops can have different counts of beats in them and be different BPMs.
   Args are the same as `seamless-loop-audio-buffer!`."
@@ -68,7 +78,7 @@
   * `old-beats-count` is optionally the number of beats in the playing loop, defaults to 1.
   * `new-beats-count` is optionally the number of beats in the new loop, defaults to 1."
   [ctx audio-buffer playing-source & [old-beats-count new-beats-count]]
-  (let [offset (compute-offset ctx audio-buffer playing-source (or old-beats-count 1) (or new-beats-count 1))
+  (let [offset (compute-seamless-loop-offset ctx audio-buffer playing-source (or old-beats-count 1) (or new-beats-count 1))
         src (loop-audio-buffer! ctx audio-buffer offset)]
     (when playing-source
       (stop-source! playing-source))
