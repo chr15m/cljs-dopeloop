@@ -22,16 +22,6 @@
       (let [array-buffer (.getChannelData audio-buffer b)]
         (.copyToChannel array-buffer (nth arrays b) b)))))
 
-; *** iOS Safari detection *** ;
-
-(defn on-ios?
-  "Returns true if the current platform is an iOS device."
-  []
-  (or (= (.indexOf (aget js/navigator "platform") "iP") 0)
-      (and
-        (-> js/navigator .-userAgent (.includes "Mac"))
-        (not= (type (aget js/document "ontouchend")) "undefined"))))
-
 ; *** seamless looping of audio buffers *** ;
 
 (defn loop-audio-buffer!
@@ -83,3 +73,42 @@
     (when playing-source
       (stop-source! playing-source))
     src))
+
+; *** platform specific utils *** ;
+
+(defn on-ios?
+  "Returns true if the current platform is an iOS device."
+  []
+  (or (= (.indexOf (aget js/navigator "platform") "iP") 0)
+      (and
+        (-> js/navigator .-userAgent (.includes "Mac"))
+        (not= (type (aget js/document "ontouchend")) "undefined"))))
+
+(defn toggle-audio-context [context pause]
+  (cond
+    (and pause context (= (aget context "state") "running"))
+    (.suspend context)
+    (and (not pause) context (= (aget context "state") "suspended"))
+    (js/setTimeout #(.resume context) 500)))
+
+(defn manage-audio-context-ios
+  "On iOS attach handlers to manage the AudioContext so it resumes
+  correctly and prevents audio dropouts. `get-context-fn` is a function
+  to get the audio context you want to manage."
+  [get-context-fn]
+  (when (on-ios?)
+    (let [audio-context (get-context-fn)]
+      (.addEventListener js/window "blur" #(toggle-audio-context audio-context true))
+      (.addEventListener js/window "focus" #(toggle-audio-context audio-context false)))))
+
+(defn can-get-volume
+  "Determine if the cordova volume plugins are available."
+  []
+  (or (try (aget js/window "cordova" "plugins" "VolumeControl") (catch :default _e nil))
+      (aget js/window "androidVolume")))
+
+(defn get-volume
+  "Get current media volume on Cordova native devices."
+  [callback]
+  (when-let [volfn (can-get-volume)]
+    (volfn callback)))
