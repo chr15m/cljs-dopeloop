@@ -101,14 +101,9 @@
       (.addEventListener js/window "blur" #(toggle-audio-context audio-context true))
       (.addEventListener js/window "focus" #(toggle-audio-context audio-context false)))))
 
-(defn can-get-volume
-  "Determine if the cordova volume plugins are available."
-  []
-  (or (try (aget js/window "cordova" "plugins" "VolumeControl") (catch :default _e nil))
-      (aget js/window "androidVolume")))
-
 (defn get-volume
-  "Get current media volume on Cordova native devices."
+  "Get current media volume on Cordova native devices.
+  The callback is never called on non-native platforms"
   [callback]
-  (when-let [volfn (can-get-volume)]
-    (volfn callback)))
+  (try (-> js/window .-cordova .-plugins .-VolumeControl (.getVolume callback)) (catch :default _e nil))
+  (try (-> js/window .-androidVolume (.getMusic (fn [vol] (callback (/ vol 100.0))))) (catch :default _e nil)))
