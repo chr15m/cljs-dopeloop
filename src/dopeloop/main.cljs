@@ -107,3 +107,11 @@
   [callback]
   (try (-> js/window .-cordova .-plugins .-VolumeControl (.getVolume callback)) (catch :default _e nil))
   (try (-> js/window .-androidVolume (.getMusic (fn [vol] (callback (/ vol 100.0))))) (catch :default _e nil)))
+
+(defn poll-device-volume
+  "Poll the device's native volume at `rate-ms` via Cordova plugins and run `callback`
+  with the volume as a float between 0 and 1."
+  [rate-ms callback]
+  (js/setInterval
+    #(get-volume callback)
+    rate-ms))
