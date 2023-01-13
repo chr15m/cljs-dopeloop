@@ -117,5 +117,11 @@
     rate-ms))
 
 (defn lock-screen-orientation
+  "Locks the screen orientation."
   [orientation]
   (try (-> js/window .-screen .-orientation (.lock orientation)) (catch :default _e nil)))
+
+(defn on-device-ready
+  "Cordova's deviceready event which signals APIs are ready to use."
+  [callback]
+  (.addEventListener js/document "deviceready" callback false))
