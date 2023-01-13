@@ -115,3 +115,7 @@
   (js/setInterval
     #(get-volume callback)
     rate-ms))
+
+(defn lock-screen-orientation
+  [orientation]
+  (try (-> js/window .-screen .-orientation (.lock orientation)) (catch :default _e nil)))
