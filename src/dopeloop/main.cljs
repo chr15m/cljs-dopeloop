@@ -125,3 +125,11 @@
   "Cordova's deviceready event which signals APIs are ready to use."
   [callback]
   (.addEventListener js/document "deviceready" callback false))
+
+(defn keep-awake
+  "Keeps the screen awake."
+  [] (try (-> js/window .-plugins .-insomnia .keepAwake) (catch :default e (js/console.log "keep-awake error" e))))
+
+(defn keep-awake-cancel
+  "Allows the screen to sleep again."
+  [] (try (-> js/window .-plugins .-insomnia .allowSleepAgain) (catch :default e (js/console.log "keep-awake-cancel error" e))))
