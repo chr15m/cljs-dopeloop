@@ -74,6 +74,13 @@
       (stop-source! playing-source))
     src))
 
+(defn get-loop-position
+  "Get the current playing position of a loop in seconds.
+  Also returns the duration in seconds so the percentage or slice can be calculated."
+  [ctx playing-source]
+  (let [duration (aget playing-source "buffer" "duration")]
+    [(mod (- (aget ctx "currentTime") (aget playing-source "t_start")) duration) duration]))
+
 ; *** platform specific utils *** ;
 
 (defn on-ios?
