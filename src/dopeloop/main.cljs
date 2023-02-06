@@ -108,6 +108,16 @@
       (.addEventListener js/window "blur" #(toggle-audio-context audio-context true))
       (.addEventListener js/window "focus" #(toggle-audio-context audio-context false)))))
 
+; *** cordova plugin wrappers *** ;
+
+(defn on-device-ready
+  "Cordova's deviceready event which signals APIs are ready to use."
+  [callback]
+  (.addEventListener js/document "deviceready" callback false))
+
+; cordova plugin add https://github.com/chr15m/cordova-plugin-get-volume
+; cordova plugin add https://github.com/MCluck90/cordova-plugin-android-volume
+
 (defn get-volume
   "Get current media volume on Cordova native devices.
   The callback is never called on non-native platforms."
@@ -123,15 +133,14 @@
     #(get-volume callback)
     rate-ms))
 
+; cordova plugin add cordova-plugin-screen-orientation
+
 (defn lock-screen-orientation
   "Locks the screen orientation."
   [orientation]
   (try (-> js/window .-screen .-orientation (.lock orientation)) (catch :default _e nil)))
 
-(defn on-device-ready
-  "Cordova's deviceready event which signals APIs are ready to use."
-  [callback]
-  (.addEventListener js/document "deviceready" callback false))
+; cordova plugin add https://github.com/EddyVerbruggen/Insomnia-PhoneGap-Plugin.git
 
 (defn wake-screen-lock
   "Keeps the screen awake. Pass true to keep awake and false to let it sleep again."
