@@ -133,10 +133,10 @@
   [callback]
   (.addEventListener js/document "deviceready" callback false))
 
-(defn keep-awake
-  "Keeps the screen awake."
-  [] (try (-> js/window .-plugins .-insomnia .keepAwake) (catch :default e (js/console.log "keep-awake error" e))))
-
-(defn keep-awake-cancel
-  "Allows the screen to sleep again."
-  [] (try (-> js/window .-plugins .-insomnia .allowSleepAgain) (catch :default e (js/console.log "keep-awake-cancel error" e))))
+(defn wake-screen-lock
+  "Keeps the screen awake. Pass true to keep awake and false to let it sleep again."
+  [wake?] (try
+            (if wake?
+              (-> js/window .-plugins .-insomnia .keepAwake)
+              (-> js/window .-plugins .-insomnia .allowSleepAgain))
+            (catch :default _e nil)))
