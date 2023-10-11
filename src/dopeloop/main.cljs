@@ -22,6 +22,15 @@
       (let [array-buffer (.getChannelData audio-buffer b)]
         (.copyToChannel array-buffer (nth arrays b) b)))))
 
+(defn make-audio-buffer
+  "Create an empty audio buffer with length based on bpm and beat count."
+  [audio-context bpm beats]
+  (let [beat-seconds (/ (/ 60 bpm) 2)
+        sample-rate (aget audio-context "sampleRate")
+        frames-per-beat (int (* beat-seconds sample-rate))
+        frame-count (* beats frames-per-beat)]
+    (.createBuffer audio-context 2 frame-count sample-rate)))
+
 ; *** seamless looping of audio buffers *** ;
 
 (defn loop-audio-buffer!
