@@ -149,3 +149,33 @@
               (-> js/window .-plugins .-insomnia .keepAwake)
               (-> js/window .-plugins .-insomnia .allowSleepAgain))
             (catch :default _e nil)))
+
+; *** higher level buffer play functions from PocketSync *** ;
+
+(defn play! [state]
+  (wake-screen-lock true)
+  (swap! state update-in [:audio] assoc
+         :playing true
+         :context (audio-context.)))
+
+(defn stop! [state]
+  (wake-screen-lock false)
+  (let [audio-source (@state :audio-source)]
+    (.close (:context @state))
+    (swap! state update-in [:audio] dissoc
+           :updating
+           :update-again
+           :audio-source
+           :context
+           :playing
+           :playback-position)
+    (stop-source! audio-source)))
+
+(defn poll-playback-position! [state ms callback]
+  (js/setInterval
+    (fn []
+      (let [audio-context (:context @state)
+            audio-source (:audio-source @state)]
+        (when (and audio-context audio-source)
+          (callback (get-loop-position audio-context audio-source)))))
+    ms))
