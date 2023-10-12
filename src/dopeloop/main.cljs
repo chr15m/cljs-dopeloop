@@ -167,18 +167,23 @@
          :playing true
          :context (audio-context.)))
 
+(defn close-and-stop-audio! [{:keys [source context] :as audio}]
+  (stop-source! source)
+  (when context (.close context))
+  audio)
+
 (defn stop! [state]
   (wake-screen-lock false)
-  (let [audio-source (@state :audio-source)]
-    (.close (:context @state))
-    (swap! state update-in [:audio] dissoc
-           :updating
-           :update-again
-           :audio-source
-           :context
-           :playing
-           :playback-position)
-    (stop-source! audio-source)))
+  (swap! state update-in [:audio]
+         #(-> %
+              close-and-stop-audio!
+              (dissoc
+               :updating
+               :update-again
+               :source
+               :context
+               :playing
+               :playback-position))))
 
 (defn poll-playback-position! [state ms callback]
   (js/setInterval
