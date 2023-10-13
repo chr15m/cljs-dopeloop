@@ -31,6 +31,15 @@
         frame-count (* beats frames-per-beat)]
     (.createBuffer audio-context 2 frame-count sample-rate)))
 
+(defn fetch-sample
+  "Fetch a remote sample and return the buffer containing it."
+  [id url]
+  (let [ctx (audio-context.)]
+  (-> (js/fetch url)
+      (.then #(.arrayBuffer %))
+      (.then #(.decodeAudioData ctx %))
+      (.then (fn [buff] {id buff})))))
+
 ; *** seamless looping of audio buffers *** ;
 
 (defn loop-audio-buffer!
