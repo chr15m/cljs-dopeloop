@@ -33,12 +33,11 @@
 
 (defn fetch-sample
   "Fetch a remote sample and return the buffer containing it."
-  [id url]
-  (let [ctx (audio-context.)]
+  [url & [actx]]
+  (let [ctx (or actx (audio-context.))]
   (-> (js/fetch url)
       (.then #(.arrayBuffer %))
-      (.then #(.decodeAudioData ctx %))
-      (.then (fn [buff] {id buff})))))
+      (.then #(.decodeAudioData ctx %)))))
 
 ; *** seamless looping of audio buffers *** ;
 
