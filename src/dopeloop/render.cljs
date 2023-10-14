@@ -3,7 +3,8 @@
     ["virtual-audio-graph" :refer [bufferSource]]
     ["virtual-audio-graph$default" :as createVirtualAudioGraph]))
 
-; a clip is a series of notes and definitions for the instruments that make the sounds for those notes
+; a clip is a series of notes and definitions for the
+; instruments that make the sounds for those notes
 
 (def clip-definition
   {:tempo 120 ; BPM
@@ -44,7 +45,6 @@
        :notes
        (map-indexed
          (fn [idx note]
-           (js/console.log "sample" (lookup-sample note clip))
            [idx (bufferSource
                   "output"
                   #js {:buffer (lookup-sample note clip)
@@ -61,6 +61,6 @@
   [audio-graph bpm beats]
   (let [ctx (js/OfflineAudioContext.
               2 (* (beats-to-seconds bpm beats) 44100) 44100)
-        graph (createVirtualAudioGraph #js {:context ctx})]
+        graph (createVirtualAudioGraph #js {:audioContext ctx})]
     (.update graph (clj->js audio-graph))
     (.startRendering ctx)))
