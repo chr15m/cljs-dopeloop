@@ -196,11 +196,11 @@
                :playing
                :playback-position))))
 
-(defn poll-playback-position! [state ms callback]
-  (js/setInterval
+(defn poll-playback-position! [state callback]
+  (js/requestAnimationFrame
     (fn []
-      (let [audio-context (:context @state)
-            audio-source (:audio-source @state)]
+      (let [audio-context (-> @state :audio :context)
+            audio-source (-> @state :audio :source)]
         (when (and audio-context audio-source)
-          (callback (get-loop-position audio-context audio-source)))))
-    ms))
+          (callback (get-loop-position audio-context audio-source))))
+      (poll-playback-position! state callback))))
