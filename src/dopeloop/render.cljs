@@ -1,5 +1,6 @@
 (ns dopeloop.render
   (:require
+    [dopeloop.main :refer [beats-to-seconds]]
     ["virtual-audio-graph" :refer [bufferSource]]
     ["virtual-audio-graph$default" :as createVirtualAudioGraph]))
 
@@ -18,9 +19,6 @@
                   ;:role :bassdrum ; for outputting midi drums
                   :buffer "...array..." ; if this is a sample based instrument
                   }]})
-
-(defn beats-to-seconds [bpm beat]
-  (* (/ (/ 60 bpm) 2) beat))
 
 (defn instrument-from-sample [id buffer]
   {:id id

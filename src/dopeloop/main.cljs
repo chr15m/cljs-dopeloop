@@ -4,6 +4,9 @@
   (or (aget js/window "AudioContext")
       (aget js/window "webkitAudioContext")))
 
+(defn beats-to-seconds [bpm beat]
+  (* (/ 60 bpm 4) beat))
+
 (defn get-peak-volume
   "Find the peak sample height in an array of audio data."
   [channel-data-array]
@@ -25,7 +28,7 @@
 (defn make-audio-buffer
   "Create an empty audio buffer with length based on bpm and beat count."
   [audio-context bpm beats]
-  (let [beat-seconds (/ (/ 60 bpm) 2)
+  (let [beat-seconds (/ 60 bpm)
         sample-rate (aget audio-context "sampleRate")
         frames-per-beat (int (* beat-seconds sample-rate))
         frame-count (* beats frames-per-beat)]
