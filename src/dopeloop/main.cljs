@@ -194,7 +194,7 @@
                :source
                :context
                :playing
-               :playback-position))))
+               :position))))
 
 (defn poll-playback-position! [state callback]
   (js/requestAnimationFrame
