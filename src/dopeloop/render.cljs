@@ -34,7 +34,6 @@
                         (filter #(= (:id %) instrument-id))
                         first)
         buffer (:buffer instrument)]
-    (js/console.log instrument-id (:instruments clip))
     buffer))
 
 (defn render-clip-to-audiograph
