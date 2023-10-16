@@ -9,5 +9,8 @@
     "util",
     "clojurescript"
   ],
-  "dependencies": {}
+  "dependencies": {
+    "virtual-audio-graph": "^1.2.0",
+    "wav-encoder": "^1.3.0"
+  }
 }

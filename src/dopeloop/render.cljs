@@ -2,7 +2,8 @@
   (:require
     [dopeloop.main :refer [beats-to-seconds]]
     ["virtual-audio-graph" :refer [bufferSource]]
-    ["virtual-audio-graph$default" :as createVirtualAudioGraph]))
+    ["virtual-audio-graph$default" :as createVirtualAudioGraph]
+    ["wav-encoder" :as wav-encoder]))
 
 ; a clip is a series of notes and definitions for the
 ; instruments that make the sounds for those notes
@@ -62,3 +63,12 @@
         graph (createVirtualAudioGraph #js {:audioContext ctx})]
     (.update graph (clj->js audio-graph))
     (.startRendering ctx)))
+
+(defn render-audio-buffer-to-wav
+  "Create a File object in wav format from the passed in audio buffer."
+  [audio-buffer file-name]
+  (let [wave-structure (clj->js {:sampleRate (aget audio-buffer "sampleRate")
+                                 :channelData (.map (to-array (range (aget audio-buffer "numberOfChannels")))
+                                                    #(.getChannelData audio-buffer %))})]
+    (-> (.encode wav-encoder wave-structure)
+        (.then (fn [data] (js/File. (js/Array. data) (str file-name ".wav") #js {:type "audio/wave"}))))))
