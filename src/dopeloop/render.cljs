@@ -70,8 +70,15 @@
 (defn render-audio-buffer-to-wav
   "Create a File object in wav format from the passed in audio buffer."
   [audio-buffer file-name]
-  (let [wave-structure (clj->js {:sampleRate (aget audio-buffer "sampleRate")
-                                 :channelData (.map (to-array (range (aget audio-buffer "numberOfChannels")))
-                                                    #(.getChannelData audio-buffer %))})]
+  (let [wave-structure
+        (clj->js {:sampleRate (aget audio-buffer "sampleRate")
+                  :channelData (.map (-> audio-buffer
+                                         (aget "numberofChannels")
+                                         range
+                                         to-array)
+                                     #(.getChannelData audio-buffer %))})]
     (-> (.encode wav-encoder wave-structure)
-        (.then (fn [data] (js/File. (js/Array. data) (str file-name ".wav") #js {:type "audio/wave"}))))))
+        (.then (fn [data]
+                 (js/File. (js/Array. data)
+                           (str file-name ".wav")
+                           #js {:type "audio/wave"}))))))
