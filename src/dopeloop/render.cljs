@@ -54,14 +54,18 @@
 
 (defn render-audio-graph-to-buffer
   "Render a virtual-audio-graph to a buffer.
-  Takes an array of virtual-audio-graph nodes, the bpm, and number of beats.
+  Takes an array of virtual-audio-graph nodes, and either:
+  * the number of seconds to render, or;
+  * the bpm, and number of beats to render.
   Returns a rendered buffer via promise."
-  [audio-graph bpm beats]
-  (let [ctx (js/OfflineAudioContext.
-              2 (* (beats-to-seconds bpm beats) 44100) 44100)
-        graph (createVirtualAudioGraph #js {:audioContext ctx})]
-    (.update graph (clj->js audio-graph))
-    (.startRendering ctx)))
+  ([audio-graph seconds]
+   (let [ctx (js/OfflineAudioContext.
+               2 (* seconds 44100) 44100)
+         graph (createVirtualAudioGraph #js {:audioContext ctx})]
+     (.update graph (clj->js audio-graph))
+     (.startRendering ctx)))
+  ([audio-graph bpm beats]
+   (render-audio-graph-to-buffer audio-graph (beats-to-seconds bpm beats))))
 
 (defn render-audio-buffer-to-wav
   "Create a File object in wav format from the passed in audio buffer."
