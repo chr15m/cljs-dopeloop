@@ -1,7 +1,7 @@
 (ns dopeloop.render
   (:require
     [dopeloop.main :refer [beats-to-seconds]]
-    ["virtual-audio-graph" :refer [bufferSource]]
+    ["virtual-audio-graph" :refer [bufferSource] :as vag]
     ["virtual-audio-graph$default" :as createVirtualAudioGraph]
     ["wav-encoder" :as wav-encoder]))
 
@@ -36,6 +36,22 @@
         buffer (:buffer instrument)]
     buffer))
 
+(defn lookup-node-fn
+  [node-fn]
+  (if (fn? node-fn)
+    node-fn
+    (aget vag (name node-fn))))
+
+(defn instantiate-audio-graph-nodes
+  [audio-graph]
+  (->> audio-graph
+       (mapv (fn [[id node]]
+               (if (vector? node)
+                 [id (apply (lookup-node-fn (first node)) (clj->js (rest node)))]
+                 [id node])))
+       (into {})
+       clj->js))
+
 (defn render-clip-to-audiograph
   "Create the virtual-audio-graph nodes required to render a clip."
   [clip]
@@ -55,7 +71,7 @@
 (defn play-audio-graph
   [audio-graph]
   (.update (createVirtualAudioGraph)
-                  (clj->js audio-graph)))
+           (instantiate-audio-graph-nodes audio-graph)))
 
 (defn stop-audio-graph
   [virtual-audio-graph]
@@ -71,7 +87,7 @@
    (let [ctx (js/OfflineAudioContext.
                2 (* seconds 44100) 44100)
          graph (createVirtualAudioGraph #js {:audioContext ctx})]
-     (.update graph (clj->js audio-graph))
+     (.update graph (instantiate-audio-graph-nodes audio-graph))
      (.startRendering ctx)))
   ([audio-graph bpm beats]
    (render-audio-graph-to-buffer audio-graph (beats-to-seconds bpm beats))))
