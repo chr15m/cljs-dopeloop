@@ -16,6 +16,17 @@
           smallest (first loop-source-array-copy)]
       (max largest (js/Math.abs smallest)))))
 
+(defn normalize-channel-data
+  "Normalize all channels so peaks are at max volume."
+  [audio-buffer]
+  (let [channels (map #(.getChannelData audio-buffer %)
+                      (range (aget audio-buffer "numberOfChannels")))
+        peaks (map #(get-peak-volume %) channels)
+        highest-peak (apply js/Math.max peaks)]
+    (doseq [c channels]
+      (.map c (fn [v i a] (aset a i (/ v highest-peak)))))
+    audio-buffer))
+
 (defn arrays-to-audio-buffer
   "Convert a set of arrays to a multi-channel AudioBuffer. Defaults to audio context sample rate."
   [ctx arrays & [sample-rate]]
