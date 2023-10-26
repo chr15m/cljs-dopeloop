@@ -52,6 +52,15 @@
                        #_#_ :stopTime 0})]))
        (into {})))
 
+(defn play-audio-graph
+  [audio-graph]
+  (.update (createVirtualAudioGraph)
+                  (clj->js audio-graph)))
+
+(defn stop-audio-graph
+  [virtual-audio-graph]
+  (.update virtual-audio-graph #js {}))
+
 (defn render-audio-graph-to-buffer
   "Render a virtual-audio-graph to a buffer.
   Takes an array of virtual-audio-graph nodes, and either:
