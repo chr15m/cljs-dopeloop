@@ -1,7 +1,7 @@
 (ns dopeloop.render
   (:require
     [dopeloop.main :refer [beats-to-seconds]]
-    ["virtual-audio-graph" :refer [bufferSource] :as vag]
+    ["virtual-audio-graph" :refer [bufferSource gain] :as vag]
     ["virtual-audio-graph$default" :as createVirtualAudioGraph]
     ["wav-encoder" :as wav-encoder]))
 
@@ -27,14 +27,13 @@
 
 (defn lookup-sample
   "Look up a sample from a sample based instrument.
-  Returns the buffer containing that sample."
+  Returns the sample definition."
   [note clip]
   (let [instrument-id (:instrument note)
         instrument (->> (:instruments clip)
                         (filter #(= (:id %) instrument-id))
-                        first)
-        buffer (:buffer instrument)]
-    buffer))
+                        first)]
+    instrument))
 
 (defn lookup-node-fn
   [node-fn]
@@ -59,13 +58,17 @@
        :notes
        (map-indexed
          (fn [idx note]
-           [idx (bufferSource
-                  "output"
-                  #js {:buffer (lookup-sample note clip)
+           (let [sample (lookup-sample note clip)]
+             (when (not (:mute sample))
+               {(* idx 2)
+                (gain "output" #js {:gain (/ (:volume sample) 4)})
+                (inc (* idx 2))
+                (bufferSource
+                  (* idx 2)
+                  #js {:buffer (:buffer sample)
                        :playbackRate 1 ; TODO: pitched playback
                        :startTime (beats-to-seconds (:tempo clip)
-                                                    (:beat note))
-                       #_#_ :stopTime 0})]))
+                                                    (:beat note))})}))))
        (into {})))
 
 (defn play-audio-graph
