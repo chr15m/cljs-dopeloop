@@ -61,7 +61,7 @@
            (let [sample (lookup-sample note clip)]
              (when (not (:mute sample))
                {(* idx 2)
-                (gain "output" #js {:gain (/ (:volume sample) 4)})
+                (gain "output" #js {:gain (/ (inc (:volume sample)) 5)})
                 (inc (* idx 2))
                 (bufferSource
                   (* idx 2)
