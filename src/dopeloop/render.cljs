@@ -19,15 +19,16 @@
                   ;:kind :oneshot
                   ;:role :bassdrum ; for outputting midi drums
                   :buffer "...array..." ; if this is a sample based instrument
-                  }]})
+                  :volume 1
+                  :mute false}]})
 
 (defn instrument-from-sample [id buffer]
   {:id id
    :buffer buffer})
 
-(defn lookup-sample
-  "Look up a sample from a sample based instrument.
-  Returns the sample definition."
+(defn lookup-instrument
+  "Look up a instrument from a clip note definition.
+  Returns the instrument definition."
   [note clip]
   (let [instrument-id (:instrument note)
         instrument (->> (:instruments clip)
@@ -58,14 +59,16 @@
        :notes
        (map-indexed
          (fn [idx note]
-           (let [sample (lookup-sample note clip)]
-             (when (not (:mute sample))
+           (let [instrument (lookup-instrument note clip)]
+             (when (not (:mute instrument))
                {(* idx 2)
-                (gain "output" #js {:gain (/ (inc (:volume sample)) 5)})
+                (gain "output" #js {:gain
+                                    (* (:volume note)
+                                       (/ (inc (:volume instrument)) 5))})
                 (inc (* idx 2))
                 (bufferSource
                   (* idx 2)
-                  #js {:buffer (:buffer sample)
+                  #js {:buffer (:buffer instrument)
                        :playbackRate 1 ; TODO: pitched playback
                        :startTime (beats-to-seconds (:tempo clip)
                                                     (:beat note))})}))))
