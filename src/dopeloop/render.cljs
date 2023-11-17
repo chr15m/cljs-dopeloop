@@ -64,7 +64,7 @@
                {(* idx 2)
                 (gain "output" #js {:gain
                                     (* (:volume note)
-                                       (/ (inc (:volume instrument)) 5))})
+                                       (:volume instrument))})
                 (inc (* idx 2))
                 (bufferSource
                   (* idx 2)
