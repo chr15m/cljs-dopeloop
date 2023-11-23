@@ -1,8 +1,10 @@
 (ns dopeloop.main)
 
 (def audio-context
-  (or (aget js/window "AudioContext")
-      (aget js/window "webkitAudioContext")))
+  (try
+    (or (aget js/window "AudioContext")
+        (aget js/window "webkitAudioContext"))
+    (catch :default _e nil)))
 
 (defn beats-to-seconds [bpm beat]
   (* (/ 60 bpm 4) beat))
