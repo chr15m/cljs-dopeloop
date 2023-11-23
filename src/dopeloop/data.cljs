@@ -25,7 +25,6 @@
     (doseq [i (range (get v "numberOfChannels"))]
       (let [buff (-> buffers (nth i) (aget "buffer"))
             f32 (js/Float32Array. buff)]
-        (js/console.log "f32" f32)
         (.copyToChannel audio-buffer f32 i)))
     audio-buffer))
 
