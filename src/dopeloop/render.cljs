@@ -36,6 +36,21 @@
                         first)]
     instrument))
 
+(defn render-clip-to-it-struct
+  "Renders a clip to an impulse tracker datastructure for itwriter."
+  [clip]
+  {:title (:name clip)
+   :bpm (:tempo clip)
+   :samples (map
+              (fn [instrument]
+                (let [buffer (:buffer instrument)]
+                  {:name (:sample-name instrument)
+                   :buffer buffer}))
+              (:instruments clip))
+   :patterns [{:rows 64
+               :channels []}]
+   :order [0]})
+
 (defn lookup-node-fn
   [node-fn]
   (if (fn? node-fn)
