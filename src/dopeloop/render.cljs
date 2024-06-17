@@ -36,9 +36,29 @@
                         first)]
     instrument))
 
+(defn index-of [col i]
+  (first (keep-indexed #(when (= %2 i) %1) col)))
+
 (defn render-clip-to-it-struct
   "Renders a clip to an impulse tracker datastructure for itwriter."
   [clip]
+  (js/console.log
+    "note data"
+    (->> clip
+       :notes
+       (map-indexed
+         (fn [idx note]
+           (let [instrument (lookup-instrument note clip)
+                 instrument-index (index-of (:instruments clip) instrument)]
+             (when (not (:mute instrument))
+               {:channel instrument-index
+                :pos (* idx 4)
+                :data {:note "C-5"
+                       :instrument instrument-index
+                       :vol (str "v" (js/Math.min (js/Math.floor (* (:volume instrument) (:volume note) 64)) 64))}}))))
+       (group-by :channel)
+       ;(sort-by first)
+       ))
   {:title (:name clip)
    :bpm (:tempo clip)
    :samples (map
