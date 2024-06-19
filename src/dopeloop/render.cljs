@@ -14,13 +14,17 @@
             ;:note "F#3" ; optional for one-shot samples
             :beat 0 ; beat number to start on
             :length nil ; cut sound after this many beats
+            ;:channel ; optional channel id for .it export (references channels below)
             }]
    :instruments [{:id "..."
                   ;:kind :oneshot
                   ;:role :bassdrum ; for outputting midi drums
                   :buffer "...array..." ; if this is a sample based instrument
                   :volume 1
-                  :mute false}]})
+                  :mute false}]
+   :channels [{:name "ch 1" ; optional for .it export
+               :id 0 ; channel id reference for .it export
+               }]})
 
 (defn instrument-from-sample [id buffer]
   {:id id
@@ -42,34 +46,46 @@
 (defn render-clip-to-it-struct
   "Renders a clip to an impulse tracker datastructure for itwriter."
   [clip]
-  (js/console.log
-    "note data"
-    (->> clip
-       :notes
-       (map-indexed
-         (fn [idx note]
-           (let [instrument (lookup-instrument note clip)
-                 instrument-index (index-of (:instruments clip) instrument)]
-             (when (not (:mute instrument))
-               {:channel instrument-index
-                :pos (* idx 4)
-                :data {:note "C-5"
-                       :instrument instrument-index
-                       :vol (str "v" (js/Math.min (js/Math.floor (* (:volume instrument) (:volume note) 64)) 64))}}))))
-       (group-by :channel)
-       ;(sort-by first)
-       ))
-  {:title (:name clip)
-   :bpm (:tempo clip)
-   :samples (map
-              (fn [instrument]
-                (let [buffer (:buffer instrument)]
-                  {:name (:sample-name instrument)
-                   :buffer buffer}))
-              (:instruments clip))
-   :patterns [{:rows 64
-               :channels []}]
-   :order [0]})
+  (let [named-channels (->> clip
+                            :notes
+                            (map-indexed
+                              (fn [_idx note]
+                                (let [instrument (lookup-instrument note clip)
+                                      instrument-index (index-of (:instruments clip) instrument)]
+                                  {:channel (:id instrument)
+                                   :data [(:beat note)
+                                          {:note (or (:note note) "C-5")
+                                           :instrument instrument-index
+                                           :vol (->> (* (:volume instrument) (:volume note) 64)
+                                                     (js/Math.floor)
+                                                     (js/Math.min 64)
+                                                     (str "v"))}]})))
+                            (group-by :channel)
+                            (map (fn [[channel channel-data]]
+                                   [channel
+                                    (->> channel-data
+                                         (map :data)
+                                         (into {}))]))
+                            (into {}))
+        channel-data (->> (map :id (:channels clip))
+                          (map-indexed (fn [_idx k]
+                                         (or
+                                           (k named-channels)
+                                           {}))))
+        channel-names (map :name (:channels clip))]
+    {:title (:name clip)
+     :bpm (:tempo clip) 
+     :mixvol 128
+     :samples (map
+                (fn [instrument]
+                  (let [buffer (:buffer instrument)]
+                    {:name (:sample-name instrument)
+                     :buffer buffer}))
+                (:instruments clip))
+     :channelnames channel-names
+     :patterns [{:rows 16
+                 :channels channel-data}]
+     :order [0]}))
 
 (defn lookup-node-fn
   [node-fn]
