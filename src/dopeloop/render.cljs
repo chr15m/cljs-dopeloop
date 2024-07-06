@@ -10,6 +10,7 @@
 
 (def clip-definition
   {:tempo 120 ; BPM
+   :length 16
    :notes [{:instrument "...id..."
             ;:note "F#3" ; optional for one-shot samples
             :beat 0 ; beat number to start on
@@ -83,7 +84,7 @@
                      :buffer buffer}))
                 (:instruments clip))
      :channelnames channel-names
-     :patterns [{:rows 16
+     :patterns [{:rows (:length clip)
                  :channels channel-data}]
      :order [0]}))
 
