@@ -126,6 +126,11 @@
         (-> js/navigator .-userAgent (.includes "Mac"))
         (not= (type (aget js/document "ontouchend")) "undefined"))))
 
+(defn ensure-audio-context-resumed [context]
+  (when (and context (= (.-state context) "suspended"))
+    (js/console.log "Resuming audio context...")
+    (.resume context)))
+
 (defn toggle-audio-context [context pause]
   (cond
     (and pause context (= (aget context "state") "running"))
