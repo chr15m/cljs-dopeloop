@@ -3,7 +3,8 @@
     [dopeloop.main :refer [beats-to-seconds]]
     ["virtual-audio-graph" :refer [bufferSource gain] :as vag]
     ["virtual-audio-graph$default" :as createVirtualAudioGraph]
-    ["wav-encoder" :as wav-encoder]))
+    ["wav-encoder" :as wav-encoder]
+    ["spessasynth_lib/midi_parser/midi_builder.js" :refer [MIDIBuilder]]))
 
 ; a clip is a series of notes and definitions for the
 ; instruments that make the sounds for those notes
@@ -165,3 +166,33 @@
                  (js/File. (js/Array. data)
                            (str file-name ".wav")
                            #js {:type "audio/wave"}))))))
+
+(def gm-drum-map
+  {:bd 36  ; Acoustic Bass Drum
+   :sd 38  ; Acoustic Snare
+   :cl 39  ; Hand Clap
+   :hh 42  ; Closed Hi-Hat
+   :oh 46  ; Open Hi-Hat
+   :rd 51  ; Ride Cymbal 1
+   :pc 37}) ; Rimshot (for percussion)
+
+(defn render-clip-to-midi
+  "Renders a clip to a MIDI file buffer."
+  [clip]
+  (let [time-division 480 ; Standard MIDI time division
+        bpm (:tempo clip)
+        midi-builder (new MIDIBuilder (:name clip) time-division bpm)
+        beat-ticks time-division]
+    (doseq [note (:notes clip)]
+      (let [midi-note (get gm-drum-map (:instrument note))
+            velocity (int (* (:volume note) 127))
+            tempo-scale 0.25
+            ticks (int (* (:beat note) beat-ticks tempo-scale))
+            duration-ticks (int (* (or (:length note) 0.1)
+                                   beat-ticks
+                                   tempo-scale))]
+        (when midi-note
+          (.addNoteOn midi-builder ticks 0 9 midi-note velocity)
+          (.addNoteOff midi-builder (+ ticks duration-ticks) 0 9 midi-note))))
+    (.flush midi-builder)
+    (.-buffer (.writeMIDI midi-builder))))
