@@ -47,24 +47,45 @@
 (defn index-of [col i]
   (first (keep-indexed #(when (= %2 i) %1) col)))
 
+(defn calculate-swing-offset
+  "Calculates the swing offset for a given beat.
+  Swing is applied to off-beats (2nd and 4th 8th notes) based on swing-factor.
+  Assumes 4 beats per measure for swing calculation."
+  [beat tempo swing-percent]
+  (let [swing-factor (/ (or swing-percent 0) 100.0)
+        swing-offset (if (odd? beat)
+                       (* swing-factor
+                          (beats-to-seconds tempo 1))
+                       0)]
+    swing-offset))
+
 (defn render-clip-to-it-struct
   "Renders a clip to an impulse tracker datastructure for itwriter."
   [clip]
-  (let [named-channels
+  (let [ticks-per-row 6
+        named-channels
         (->> clip
              :notes
              (map-indexed
                (fn [_idx note]
                  (let [instrument (lookup-instrument note clip)
-                       instrument-index (index-of (:instruments clip) instrument)]
+                       instrument-index (index-of (:instruments clip) instrument)
+                       swing-offset-ticks (-> (:swing clip)
+                                              (/ 100)
+                                              (* ticks-per-row)
+                                              js/Math.round)
+                       note-data (cond-> {:note (or (:note note) "C-5")
+                                          :instrument instrument-index
+                                          :vol (->> (* (:volume instrument)
+                                                       (:volume note) 64)
+                                                    (js/Math.floor)
+                                                    (js/Math.min 64)
+                                                    (str "v"))}
+                                   (and (odd? (:beat note))
+                                        (> swing-offset-ticks 0))
+                                   (assoc :fx (str "SD" swing-offset-ticks)))]
                    {:channel (:id instrument)
-                    :data [(:beat note)
-                           {:note (or (:note note) "C-5")
-                            :instrument instrument-index
-                            :vol (->> (* (:volume instrument) (:volume note) 64)
-                                      (js/Math.floor)
-                                      (js/Math.min 64)
-                                      (str "v"))}]})))
+                    :data [(:beat note) note-data]})))
              (group-by :channel)
              (map (fn [[channel channel-data]]
                     [channel
@@ -80,6 +101,7 @@
         channel-names (map :name (:channels clip))]
     {:title (:name clip)
      :bpm (:tempo clip)
+     :ticks ticks-per-row
      :mixvol 128
      :samples (map
                 (fn [instrument]
@@ -107,18 +129,6 @@
                  [id node])))
        (into {})
        clj->js))
-
-(defn calculate-swing-offset
-  "Calculates the swing offset for a given beat.
-  Swing is applied to off-beats (2nd and 4th 8th notes) based on swing-factor.
-  Assumes 4 beats per measure for swing calculation."
-  [beat tempo swing-percent]
-  (let [swing-factor (/ (or swing-percent 0) 100.0)
-        swing-offset (if (odd? beat)
-                       (* swing-factor
-                          (beats-to-seconds tempo 1))
-                       0)]
-    swing-offset))
 
 (defn render-clip-to-audiograph
   "Create the virtual-audio-graph nodes required to render a clip."
