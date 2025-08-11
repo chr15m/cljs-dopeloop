@@ -219,14 +219,17 @@
     (doseq [note (:notes clip)]
       (let [midi-note (get gm-drum-map (:instrument note))
             velocity (int (* (:volume note) 127))
-            swing-offset-seconds (calculate-swing-offset
-                                   (:beat note) bpm (:swing clip))
-            swing-offset-ticks (js/Math.round
-                                 (* swing-offset-seconds
-                                    2
-                                    (/ time-division (/ bpm 60))))
-            base-ticks (int (* (:beat note) beat-ticks tempo-scale))
-            ticks (+ base-ticks swing-offset-ticks)
+            swing-offset-ticks (if (odd? (:beat note))
+                                 (-> (:swing clip)
+                                     (/ 100)
+                                     (* beat-ticks)
+                                     js/Math.round)
+                                 0)
+            ticks (-> (:beat note)
+                      (* beat-ticks)
+                      (+ swing-offset-ticks)
+                      (* tempo-scale)
+                      int)
             duration-ticks (int (* (or (:length note) 0.1)
                                    beat-ticks
                                    tempo-scale))]
