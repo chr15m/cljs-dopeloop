@@ -201,15 +201,22 @@
 (defn render-clip-to-midi
   "Renders a clip to a MIDI file buffer."
   [clip]
-  (let [time-division 480 ; Standard MIDI time division
+  (let [time-division 480
         bpm (:tempo clip)
         midi-builder (new MIDIBuilder (:name clip) time-division bpm)
+        tempo-scale 0.25
         beat-ticks time-division]
     (doseq [note (:notes clip)]
       (let [midi-note (get gm-drum-map (:instrument note))
             velocity (int (* (:volume note) 127))
-            tempo-scale 0.25
-            ticks (int (* (:beat note) beat-ticks tempo-scale))
+            swing-offset-seconds (calculate-swing-offset
+                                   (:beat note) bpm (:swing clip))
+            swing-offset-ticks (js/Math.round
+                                 (* swing-offset-seconds
+                                    2
+                                    (/ time-division (/ bpm 60))))
+            base-ticks (int (* (:beat note) beat-ticks tempo-scale))
+            ticks (+ base-ticks swing-offset-ticks)
             duration-ticks (int (* (or (:length note) 0.1)
                                    beat-ticks
                                    tempo-scale))]
