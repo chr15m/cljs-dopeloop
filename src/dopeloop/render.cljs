@@ -108,24 +108,35 @@
 (defn render-clip-to-audiograph
   "Create the virtual-audio-graph nodes required to render a clip."
   [clip]
-  (->> clip
-       :notes
-       (map-indexed
-         (fn [idx note]
-           (let [instrument (lookup-instrument note clip)]
-             (when (not (:mute instrument))
-               {(* idx 2)
-                (gain "output" #js {:gain
-                                    (* (:volume note)
-                                       (:volume instrument))})
-                (inc (* idx 2))
-                (bufferSource
-                  (* idx 2)
-                  #js {:buffer (:buffer instrument)
-                       :playbackRate 1 ; TODO: pitched playback
-                       :startTime (beats-to-seconds (:tempo clip)
-                                                    (:beat note))})}))))
-       (into {})))
+  (let [swing-percent (or (:swing clip) 0)
+        swing-factor (/ swing-percent 100.0)]
+    (->> clip
+         :notes
+         (map-indexed
+           (fn [idx note]
+             (let [instrument (lookup-instrument note clip)
+                   base-start-time (beats-to-seconds (:tempo clip) (:beat note))
+                   ; Assuming 4 beats per measure for swing
+                   beat-in-measure (mod (:beat note) 4)
+                   ; Apply swing to off-beats (2nd and 4th 8th notes)
+                   ; 1/4 beat swing offset
+                   swing-offset (if (odd? beat-in-measure)
+                                  (* swing-factor
+                                     (/ (beats-to-seconds (:tempo clip) 1) 4))
+                                  0)
+                   start-time (+ base-start-time swing-offset)]
+               (when (not (:mute instrument))
+                 {(* idx 2)
+                  (gain "output" #js {:gain
+                                      (* (:volume note)
+                                         (:volume instrument))})
+                  (inc (* idx 2))
+                  (bufferSource
+                    (* idx 2)
+                    #js {:buffer (:buffer instrument)
+                         :playbackRate 1 ; TODO: pitched playback
+                         :startTime start-time})}))))
+         (into {}))))
 
 (defn play-audio-graph
   [audio-graph]
