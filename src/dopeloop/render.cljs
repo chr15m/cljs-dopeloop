@@ -114,11 +114,9 @@
   Assumes 4 beats per measure for swing calculation."
   [beat tempo swing-percent]
   (let [swing-factor (/ (or swing-percent 0) 100.0)
-        beat-in-measure (mod beat 4)
-        ; 1/4 beat swing offset
-        swing-offset (if (odd? beat-in-measure)
+        swing-offset (if (odd? beat)
                        (* swing-factor
-                          (/ (beats-to-seconds tempo 1) 4))
+                          (beats-to-seconds tempo 1))
                        0)]
     swing-offset))
 
