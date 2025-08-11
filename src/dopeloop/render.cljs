@@ -107,38 +107,48 @@
        (into {})
        clj->js))
 
+(defn calculate-swing-offset
+  "Calculates the swing offset for a given beat.
+  Swing is applied to off-beats (2nd and 4th 8th notes) based on swing-factor.
+  Assumes 4 beats per measure for swing calculation."
+  [beat tempo swing-percent]
+  (let [swing-factor (/ (or swing-percent 0) 100.0)
+        beat-in-measure (mod beat 4)
+        ; 1/4 beat swing offset
+        swing-offset (if (odd? beat-in-measure)
+                       (* swing-factor
+                          (/ (beats-to-seconds tempo 1) 4))
+                       0)]
+    swing-offset))
+
 (defn render-clip-to-audiograph
   "Create the virtual-audio-graph nodes required to render a clip."
   [clip]
-  (let [swing-percent (or (:swing clip) 0)
-        swing-factor (/ swing-percent 100.0)]
-    (->> clip
-         :notes
-         (map-indexed
-           (fn [idx note]
-             (let [instrument (lookup-instrument note clip)
-                   base-start-time (beats-to-seconds (:tempo clip) (:beat note))
-                   ; Assuming 4 beats per measure for swing
-                   beat-in-measure (mod (:beat note) 4)
-                   ; Apply swing to off-beats (2nd and 4th 8th notes)
-                   ; 1/4 beat swing offset
-                   swing-offset (if (odd? beat-in-measure)
-                                  (* swing-factor
-                                     (/ (beats-to-seconds (:tempo clip) 1) 4))
-                                  0)
-                   start-time (+ base-start-time swing-offset)]
-               (when (not (:mute instrument))
-                 {(* idx 2)
-                  (gain "output" #js {:gain
-                                      (* (:volume note)
-                                         (:volume instrument))})
-                  (inc (* idx 2))
-                  (bufferSource
-                    (* idx 2)
-                    #js {:buffer (:buffer instrument)
-                         :playbackRate 1 ; TODO: pitched playback
-                         :startTime start-time})}))))
-         (into {}))))
+  (->> clip
+       :notes
+       (map-indexed
+         (fn [idx note]
+           (let [instrument (lookup-instrument note clip)
+                 base-start-time (beats-to-seconds
+                                   (:tempo clip)
+                                   (:beat note))
+                 swing-offset (calculate-swing-offset
+                                (:beat note)
+                                (:tempo clip)
+                                (:swing clip))
+                 start-time (+ base-start-time swing-offset)]
+             (when (not (:mute instrument))
+               {(* idx 2)
+                (gain "output" #js {:gain
+                                    (* (:volume note)
+                                       (:volume instrument))})
+                (inc (* idx 2))
+                (bufferSource
+                  (* idx 2)
+                  #js {:buffer (:buffer instrument)
+                       :playbackRate 1 ; TODO: pitched playback
+                       :startTime start-time})}))))
+       (into {})))
 
 (defn play-audio-graph
   [audio-graph]
