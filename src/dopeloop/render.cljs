@@ -26,9 +26,11 @@
                   :mute false}]
    :channels [{:name "ch 1" ; optional for .it export
                :id 0 ; channel id reference for .it export
-               }]})
+               }]
+   :swing 0}) ; 0-100% swing
 
-(defn instrument-from-sample [id buffer]
+(defn instrument-from-sample
+  [id buffer]
   {:id id
    :buffer buffer})
 
@@ -76,7 +78,7 @@
                                            {}))))
         channel-names (map :name (:channels clip))]
     {:title (:name clip)
-     :bpm (:tempo clip) 
+     :bpm (:tempo clip)
      :mixvol 128
      :samples (map
                 (fn [instrument]
@@ -168,7 +170,7 @@
   (let [wave-structure
         (clj->js {:sampleRate (aget audio-buffer "sampleRate")
                   :channelData (.map (-> audio-buffer
-                                         (aget "numberofChannels")
+                                         (aget "numberOfChannels")
                                          range
                                          to-array)
                                      #(.getChannelData audio-buffer %))})]
