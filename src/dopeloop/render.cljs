@@ -50,27 +50,28 @@
 (defn render-clip-to-it-struct
   "Renders a clip to an impulse tracker datastructure for itwriter."
   [clip]
-  (let [named-channels (->> clip
-                            :notes
-                            (map-indexed
-                              (fn [_idx note]
-                                (let [instrument (lookup-instrument note clip)
-                                      instrument-index (index-of (:instruments clip) instrument)]
-                                  {:channel (:id instrument)
-                                   :data [(:beat note)
-                                          {:note (or (:note note) "C-5")
-                                           :instrument instrument-index
-                                           :vol (->> (* (:volume instrument) (:volume note) 64)
-                                                     (js/Math.floor)
-                                                     (js/Math.min 64)
-                                                     (str "v"))}]})))
-                            (group-by :channel)
-                            (map (fn [[channel channel-data]]
-                                   [channel
-                                    (->> channel-data
-                                         (map :data)
-                                         (into {}))]))
-                            (into {}))
+  (let [named-channels
+        (->> clip
+             :notes
+             (map-indexed
+               (fn [_idx note]
+                 (let [instrument (lookup-instrument note clip)
+                       instrument-index (index-of (:instruments clip) instrument)]
+                   {:channel (:id instrument)
+                    :data [(:beat note)
+                           {:note (or (:note note) "C-5")
+                            :instrument instrument-index
+                            :vol (->> (* (:volume instrument) (:volume note) 64)
+                                      (js/Math.floor)
+                                      (js/Math.min 64)
+                                      (str "v"))}]})))
+             (group-by :channel)
+             (map (fn [[channel channel-data]]
+                    [channel
+                     (->> channel-data
+                          (map :data)
+                          (into {}))]))
+             (into {}))
         channel-data (->> (map :id (:channels clip))
                           (map-indexed (fn [_idx k]
                                          (or
