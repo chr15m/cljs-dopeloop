@@ -62,7 +62,8 @@
 (defn render-clip-to-it-struct
   "Renders a clip to an impulse tracker datastructure for itwriter."
   [clip]
-  (let [ticks-per-row 6
+  (let [ticks-per-row 3
+        multiplier (/ 6 ticks-per-row)
         named-channels
         (->> clip
              :notes
@@ -72,8 +73,13 @@
                        instrument-index (index-of (:instruments clip) instrument)
                        swing-offset-ticks (-> (:swing clip)
                                               (/ 100)
-                                              (* ticks-per-row)
+                                              (* 6)
                                               js/Math.round)
+                       swing-partial-ticks (mod swing-offset-ticks ticks-per-row)
+                       swing-partial-beats (js/Math.floor
+                                             (/ swing-offset-ticks ticks-per-row))
+                       swung? (and (odd? (:beat note))
+                                   (> swing-offset-ticks 0))
                        note-data (cond-> {:note (or (:note note) "C-5")
                                           :instrument instrument-index
                                           :vol (->> (* (:volume instrument)
@@ -81,11 +87,12 @@
                                                     (js/Math.floor)
                                                     (js/Math.min 64)
                                                     (str "v"))}
-                                   (and (odd? (:beat note))
-                                        (> swing-offset-ticks 0))
-                                   (assoc :fx (str "SD" swing-offset-ticks)))]
+                                   (and swung? (> swing-partial-ticks 0))
+                                   (assoc :fx (str "SD" swing-partial-ticks)))]
                    {:channel (:id instrument)
-                    :data [(:beat note) note-data]})))
+                    :data [(+ (* (:beat note) multiplier)
+                              (when swung?
+                                swing-partial-beats)) note-data]})))
              (group-by :channel)
              (map (fn [[channel channel-data]]
                     [channel
