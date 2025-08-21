@@ -16,7 +16,8 @@
             ;:note "F#3" ; optional for one-shot samples
             :beat 0 ; beat number to start on
             :length nil ; cut sound after this many beats
-            ;:channel ; optional channel id for .it export (references channels below)
+            ;:channel ; optional channel id for .it export
+                      ; (references channels below)
             }]
    :instruments [{:id "..."
                   ;:kind :oneshot
@@ -137,34 +138,95 @@
        (into {})
        clj->js))
 
+(defn- render-fx-note [idx note clip]
+  (let [instrument (lookup-instrument note clip)
+        base-start-time (beats-to-seconds (:tempo clip) (:beat note))
+        swing-offset (calculate-swing-offset
+                       (:beat note) (:tempo clip) (:swing clip))
+        start-time (+ base-start-time swing-offset)
+        rate (or (:rate note) 6)
+        beat-duration-secs (beats-to-seconds (:tempo clip) 1)
+        tick-duration-secs (/ beat-duration-secs 6)
+        repeat-length (or (:repeat-length note) :full)
+        hit-duration-secs (if (= repeat-length :half)
+                            (* 3 tick-duration-secs)
+                            beat-duration-secs)
+        vol-slide-val (or (:vol-slide note) 0)
+        vol-slide-multiplier ({0 1
+                               1 (/ 2 3.0)
+                               2 0.5
+                               3 1.5
+                               4 2} vol-slide-val)
+        start-vol (or (:start-vol note) 1)
+        base-gain (* (:volume note) (:volume instrument))
+        num-hits (js/Math.floor (/ 6 rate))
+        all-hit-params
+        (for [i (range num-hits)]
+          {:time (+ start-time (* i rate tick-duration-secs))
+           :gain (if (zero? i)
+                   (* base-gain start-vol)
+                   (* base-gain (js/Math.pow vol-slide-multiplier i)))})
+        nodes (->> all-hit-params
+                   (map-indexed
+                     (fn [i hit]
+                       (let [hit-start-time (:time hit)
+                             next-hit-start-time (-> (nth all-hit-params
+                                                          (inc i) nil) :time)
+                             stop-time-from-duration (+ hit-start-time
+                                                        hit-duration-secs)
+                             hit-stop-time (or next-hit-start-time
+                                               stop-time-from-duration)
+                             gain-val (:gain hit)
+                             gain-node-id (str "note-" idx
+                                               "-fx-hit-" i "-gain")
+                             buffer-node-id (str "note-" idx
+                                                 "-fx-hit-" i "-buffer")]
+                         {gain-node-id (gain "output"
+                                             #js {:gain (js/Math.min 1 gain-val)})
+                          buffer-node-id (bufferSource
+                                           gain-node-id
+                                           #js {:buffer (:buffer instrument)
+                                                :playbackRate 1
+                                                :startTime hit-start-time
+                                                :stopTime hit-stop-time})})))
+                   (apply merge))]
+    nodes))
+
 (defn render-clip-to-audiograph
   "Create the virtual-audio-graph nodes required to render a clip."
   [clip]
-  (->> clip
-       :notes
+  (->> (:notes clip)
+       ;(filter #(< (:beat %) 8))
        (map-indexed
          (fn [idx note]
            (let [instrument (lookup-instrument note clip)
-                 base-start-time (beats-to-seconds
-                                   (:tempo clip)
-                                   (:beat note))
-                 swing-offset (calculate-swing-offset
-                                (:beat note)
-                                (:tempo clip)
-                                (:swing clip))
-                 start-time (+ base-start-time swing-offset)]
+                 rate (or (:rate note) 6)
+                 fx-enabled? (and (:fx note) (< rate 6))]
              (when (not (:mute instrument))
-               {(* idx 2)
-                (gain "output" #js {:gain
-                                    (* (:volume note)
-                                       (:volume instrument))})
-                (inc (* idx 2))
-                (bufferSource
-                  (* idx 2)
-                  #js {:buffer (:buffer instrument)
-                       :playbackRate 1 ; TODO: pitched playback
-                       :startTime start-time})}))))
-       (into {})))
+               (if fx-enabled?
+                 (render-fx-note idx note clip)
+                 (let [base-start-time (beats-to-seconds
+                                         (:tempo clip)
+                                         (:beat note))
+                       swing-offset (calculate-swing-offset
+                                      (:beat note)
+                                      (:tempo clip)
+                                      (:swing clip))
+                       start-time (+ base-start-time swing-offset)
+                       gain-node-id (str "note-" idx "-gain")
+                       buffer-node-id (str "note-" idx "-buffer")]
+                   {gain-node-id
+                    (gain "output" #js {:gain
+                                        (* (:volume note)
+                                           (:volume instrument))})
+                    buffer-node-id
+                    (bufferSource
+                      gain-node-id
+                      #js {:buffer (:buffer instrument)
+                           :playbackRate 1 ; TODO: pitched playback
+                           :startTime start-time})}))))))
+       (remove nil?)
+       (apply merge)))
 
 (defn play-audio-graph
   [audio-graph]
