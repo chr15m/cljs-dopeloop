@@ -144,7 +144,7 @@
                         (get {1 :x2o3 2 :x1o2 3 :x1.5} v v))
         vol-slide-additive? (and (keyword? vol-slide-val)
                                  (includes? (name vol-slide-val) "+"))
-        vol-slide-adjust (second (get fx-vol-slides vol-slide-val 1))
+        vol-slide-adjust (second (get (into {} fx-vol-slides) vol-slide-val ["" 1]))
         start-vol (or (:start-vol note) 1)
         note-volume (:volume note)
         instrument-volume (:volume instrument)
