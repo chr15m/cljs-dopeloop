@@ -128,17 +128,7 @@
     node-fn
     (aget vag (name node-fn))))
 
-(defn instantiate-audio-graph-nodes
-  [audio-graph]
-  (->> audio-graph
-       (mapv (fn [[id node]]
-               (if (vector? node)
-                 [id (apply (lookup-node-fn (first node)) (clj->js (rest node)))]
-                 [id node])))
-       (into {})
-       clj->js))
-
-(defn- render-fx-note [idx note clip]
+(defn calculate-fx-note-params [note clip]
   (let [instrument (lookup-instrument note clip)
         base-start-time (beats-to-seconds (:tempo clip) (:beat note))
         swing-offset (calculate-swing-offset
@@ -165,17 +155,34 @@
           {:time (+ start-time (* i rate tick-duration-secs))
            :gain (if (zero? i)
                    (* base-gain start-vol)
-                   (* base-gain (js/Math.pow vol-slide-multiplier i)))})
+                   (* base-gain (js/Math.pow vol-slide-multiplier i)))})]
+    (map-indexed
+      (fn [i hit]
+        (let [hit-start-time (:time hit)
+              next-hit-start-time (-> (nth all-hit-params (inc i) nil) :time)
+              stop-time-from-duration (+ hit-start-time hit-duration-secs)
+              hit-stop-time (or next-hit-start-time stop-time-from-duration)]
+          (assoc hit :stop-time hit-stop-time)))
+      all-hit-params)))
+
+(defn instantiate-audio-graph-nodes
+  [audio-graph]
+  (->> audio-graph
+       (mapv (fn [[id node]]
+               (if (vector? node)
+                 [id (apply (lookup-node-fn (first node)) (clj->js (rest node)))]
+                 [id node])))
+       (into {})
+       clj->js))
+
+(defn render-fx-note [idx note clip]
+  (let [instrument (lookup-instrument note clip)
+        all-hit-params (calculate-fx-note-params note clip)
         nodes (->> all-hit-params
                    (map-indexed
                      (fn [i hit]
                        (let [hit-start-time (:time hit)
-                             next-hit-start-time (-> (nth all-hit-params
-                                                          (inc i) nil) :time)
-                             stop-time-from-duration (+ hit-start-time
-                                                        hit-duration-secs)
-                             hit-stop-time (or next-hit-start-time
-                                               stop-time-from-duration)
+                             hit-stop-time (:stop-time hit)
                              gain-val (:gain hit)
                              gain-node-id (str "note-" idx
                                                "-fx-hit-" i "-gain")
