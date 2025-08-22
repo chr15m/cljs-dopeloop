@@ -129,18 +129,15 @@
     (aget vag (name node-fn))))
 
 (defn calculate-fx-note-params [note clip]
+  ;(js/console.log "calculate-fx-note-params" note)
   (let [instrument (lookup-instrument note clip)
         base-start-time (beats-to-seconds (:tempo clip) (:beat note))
         swing-offset (calculate-swing-offset
                        (:beat note) (:tempo clip) (:swing clip))
         start-time (+ base-start-time swing-offset)
         rate (or (:rate note) 6)
-        beat-duration-secs (beats-to-seconds (:tempo clip) 1)
-        tick-duration-secs (/ beat-duration-secs 6)
+        tick-duration-secs (/ (beats-to-seconds (:tempo clip) 1) 6)
         repeat-length (or (:repeat-length note) :full)
-        hit-duration-secs (if (= repeat-length :half)
-                            (* 3 tick-duration-secs)
-                            beat-duration-secs)
         vol-slide-val (or (:vol-slide note) 0)
         vol-slide-multiplier ({0 1
                                1 (/ 2 3.0)
@@ -149,10 +146,11 @@
                                4 2} vol-slide-val)
         start-vol (or (:start-vol note) 1)
         base-gain (* (:volume note) (:volume instrument))
-        num-hits (js/Math.floor (/ 6 rate))
+        limit-ticks (if (= repeat-length :half) 3 6)
+        hit-ticks (range 0 limit-ticks rate)
         all-hit-params
-        (for [i (range num-hits)]
-          {:time (+ start-time (* i rate tick-duration-secs))
+        (for [[i tick-offset] (map-indexed vector hit-ticks)]
+          {:time (+ start-time (* tick-offset tick-duration-secs))
            :gain (if (zero? i)
                    (* base-gain start-vol)
                    (* base-gain (js/Math.pow vol-slide-multiplier i)))})]
@@ -160,6 +158,7 @@
       (fn [i hit]
         (let [hit-start-time (:time hit)
               next-hit-start-time (-> (nth all-hit-params (inc i) nil) :time)
+              hit-duration-secs (* rate tick-duration-secs)
               stop-time-from-duration (+ hit-start-time hit-duration-secs)
               hit-stop-time (or next-hit-start-time stop-time-from-duration)]
           (assoc hit :stop-time hit-stop-time)))
