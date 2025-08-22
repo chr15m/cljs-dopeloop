@@ -1,6 +1,7 @@
 (ns dopeloop.render
   (:require
     [dopeloop.main :refer [beats-to-seconds]]
+    [dopeloop.data :refer [fx-vol-slides]]
     [clojure.string :refer [includes?]]
     ["virtual-audio-graph" :refer [bufferSource gain] :as vag]
     ["virtual-audio-graph$default" :as createVirtualAudioGraph]
@@ -143,26 +144,22 @@
                         (get {1 :x2o3 2 :x1o2 3 :x1.5} v v))
         vol-slide-additive? (and (keyword? vol-slide-val)
                                  (includes? (name vol-slide-val) "+"))
-        vol-slide-adjust (get {0 1
-                               :+1o16 (/ 1 16)
-                               :+1o8 (/ 1 8)
-                               :x2o3 (/ 2 3.0)
-                               :x1o2 0.5
-                               :x1.5 1.5} vol-slide-val 1)
+        vol-slide-adjust (second (get fx-vol-slides vol-slide-val 1))
         start-vol (or (:start-vol note) 1)
-        base-gain (* (:volume note) (:volume instrument))
+        note-volume (:volume note)
+        instrument-volume (:volume instrument)
         limit-ticks (if (= repeat-length :half) 3 6)
         hit-ticks (range 0 limit-ticks rate)
         all-hit-params
         (for [[i tick-offset] (map-indexed vector hit-ticks)]
-          (let [hit-gain (if (zero? i)
-                           (* base-gain start-vol)
-                           (if vol-slide-additive?
-                             (+ (* base-gain start-vol) (* i vol-slide-adjust))
-                             (* base-gain (js/Math.pow vol-slide-adjust i))))]
-            (js/console.log "hit-gain" hit-gain)
+          (let [base-hit-gain (* note-volume start-vol)
+                fx-adjusted-gain (if vol-slide-additive?
+                                   (+ base-hit-gain (* i vol-slide-adjust))
+                                   (* base-hit-gain (js/Math.pow vol-slide-adjust i)))
+                final-gain (* (js/Math.min 1.0 fx-adjusted-gain) instrument-volume)]
+            (js/console.log "hit-gain" final-gain)
             {:time (+ start-time (* tick-offset tick-duration-secs))
-             :gain (js/Math.min hit-gain 1.0)}))]
+             :gain final-gain}))]
     (map-indexed
       (fn [i hit]
         (let [hit-start-time (:time hit)
@@ -197,7 +194,7 @@
                              buffer-node-id (str "note-" idx
                                                  "-fx-hit-" i "-buffer")]
                          {gain-node-id (gain "output"
-                                             #js {:gain (js/Math.min 1 gain-val)})
+                                             #js {:gain gain-val})
                           buffer-node-id (bufferSource
                                            gain-node-id
                                            #js {:buffer (:buffer instrument)
@@ -232,7 +229,7 @@
                        buffer-node-id (str "note-" idx "-buffer")]
                    {gain-node-id
                     (gain "output" #js {:gain
-                                        (* (:volume note)
+                                        (* (js/Math.min 1.0 (:volume note))
                                            (:volume instrument))})
                     buffer-node-id
                     (bufferSource
