@@ -1,6 +1,7 @@
 (ns dopeloop.render
   (:require
     [dopeloop.main :refer [beats-to-seconds]]
+    [clojure.string :refer [includes?]]
     ["virtual-audio-graph" :refer [bufferSource gain] :as vag]
     ["virtual-audio-graph$default" :as createVirtualAudioGraph]
     ["wav-encoder" :as wav-encoder]
@@ -129,7 +130,7 @@
     (aget vag (name node-fn))))
 
 (defn calculate-fx-note-params [note clip]
-  ;(js/console.log "calculate-fx-note-params" note)
+  (js/console.log "calculate-fx-note-params" note)
   (let [instrument (lookup-instrument note clip)
         base-start-time (beats-to-seconds (:tempo clip) (:beat note))
         swing-offset (calculate-swing-offset
@@ -138,22 +139,30 @@
         rate (or (:rate note) 6)
         tick-duration-secs (/ (beats-to-seconds (:tempo clip) 1) 6)
         repeat-length (or (:repeat-length note) :full)
-        vol-slide-val (or (:vol-slide note) 0)
-        vol-slide-multiplier ({0 1
-                               1 (/ 2 3.0)
-                               2 0.5
-                               3 1.5
-                               4 2} vol-slide-val)
+        vol-slide-val (let [v (or (:vol-slide note) 0)]
+                        (get {1 :x2o3 2 :x1o2 3 :x1.5} v v))
+        vol-slide-additive? (and (keyword? vol-slide-val)
+                                 (includes? (name vol-slide-val) "+"))
+        vol-slide-adjust (get {0 1
+                               :+1o16 (/ 1 16)
+                               :+1o8 (/ 1 8)
+                               :x2o3 (/ 2 3.0)
+                               :x1o2 0.5
+                               :x1.5 1.5} vol-slide-val 1)
         start-vol (or (:start-vol note) 1)
         base-gain (* (:volume note) (:volume instrument))
         limit-ticks (if (= repeat-length :half) 3 6)
         hit-ticks (range 0 limit-ticks rate)
         all-hit-params
         (for [[i tick-offset] (map-indexed vector hit-ticks)]
-          {:time (+ start-time (* tick-offset tick-duration-secs))
-           :gain (if (zero? i)
-                   (* base-gain start-vol)
-                   (* base-gain (js/Math.pow vol-slide-multiplier i)))})]
+          (let [hit-gain (if (zero? i)
+                           (* base-gain start-vol)
+                           (if vol-slide-additive?
+                             (+ (* base-gain start-vol) (* i vol-slide-adjust))
+                             (* base-gain (js/Math.pow vol-slide-adjust i))))]
+            (js/console.log "hit-gain" hit-gain)
+            {:time (+ start-time (* tick-offset tick-duration-secs))
+             :gain (js/Math.min hit-gain 1.0)}))]
     (map-indexed
       (fn [i hit]
         (let [hit-start-time (:time hit)
