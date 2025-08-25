@@ -297,25 +297,38 @@
         midi-builder (new MIDIBuilder (:name clip) time-division bpm)
         tempo-scale 0.25
         beat-ticks time-division]
+    (.addEvent midi-builder 0 0 0xC9 [0])
     (doseq [note (:notes clip)]
       (let [midi-note (get gm-drum-map (:instrument note))
-            velocity (int (* (:volume note) 127))
-            swing-offset-ticks (if (odd? (:beat note))
-                                 (-> (:swing clip)
-                                     (/ 100)
-                                     (* beat-ticks)
-                                     js/Math.round)
-                                 0)
-            ticks (-> (:beat note)
-                      (* beat-ticks)
-                      (+ swing-offset-ticks)
-                      (* tempo-scale)
-                      int)
-            duration-ticks (int (* (or (:length note) 0.1)
-                                   beat-ticks
-                                   tempo-scale))]
+            rate (or (:rate note) 6)
+            fx-enabled? (and (:fx note) (< rate 6))]
         (when midi-note
-          (.addNoteOn midi-builder ticks 0 9 midi-note velocity)
-          (.addNoteOff midi-builder (+ ticks duration-ticks) 0 9 midi-note))))
+          (if fx-enabled?
+            (let [hit-params (calculate-fx-note-params note clip)]
+              (doseq [hit hit-params]
+                (let [start-tick (int (* (:time hit) bpm 8))
+                      stop-tick (int (* (:stop-time hit) bpm 8))
+                      velocity (int (* (:gain hit) 127))]
+                  (when (> velocity 0)
+                    (.addNoteOn midi-builder start-tick 0 9 midi-note velocity)
+                    (.addNoteOff midi-builder stop-tick 0 9 midi-note)))))
+            (let [velocity (int (* (:volume note) 127))
+                  swing-offset-ticks (if (odd? (:beat note))
+                                       (-> (:swing clip)
+                                           (/ 100)
+                                           (* beat-ticks)
+                                           js/Math.round)
+                                       0)
+                  ticks (-> (:beat note)
+                            (* beat-ticks)
+                            (+ swing-offset-ticks)
+                            (* tempo-scale)
+                            int)
+                  duration-ticks (int (* (or (:length note) 0.1)
+                                         beat-ticks
+                                         tempo-scale))]
+              (when (> velocity 0)
+                (.addNoteOn midi-builder ticks 0 9 midi-note velocity)
+                (.addNoteOff midi-builder (+ ticks duration-ticks) 0 9 midi-note)))))))
     (.flush midi-builder)
     (.-buffer (.writeMIDI midi-builder))))
