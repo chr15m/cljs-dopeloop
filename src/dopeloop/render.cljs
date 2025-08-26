@@ -127,7 +127,7 @@
                      :buffer buffer}))
                 (:instruments clip))
      :channelnames channel-names
-     :patterns [{:rows (:length clip)
+     :patterns [{:rows (* (:length clip) multiplier)
                  :channels channel-data}]
      :order [0]}))
 
