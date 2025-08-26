@@ -4,14 +4,14 @@
     [applied-science.js-interop :as j]))
 
 (def fx-vol-slides
-  [[:unchanged ["Unchanged" 1]]
-   [:x2o3 ["× ⅔" (/ 2 3.0)]]
-   [:x1o2 ["× ½" 0.5]]
-   [:-1o4 ["- 4th" (/ 1 4)]]
-   [:+1o8 ["+ 8th" (/ 1 8)]]
-   [:+1o16 ["+ 16th" (/ 1 16)]]
-   [:x1.5 ["× 1.5" 1.5]]
-   [:x2  ["× 2" 2]]])
+  [[:unchanged ["Unchanged" 1 "0"]]
+   [:x2o3 ["× ⅔" (/ 2 3.0) "6"]]
+   [:x1o2 ["× ½" 0.5 "7"]]
+   [:-1o4 ["- 4th" (/ 1 4) "5"]]
+   [:+1o8 ["+ 8th" (/ 1 8) "C"]]
+   [:+1o16 ["+ 16th" (/ 1 16) "B"]]
+   [:x1.5 ["× 1.5" 1.5 "E"]]
+   [:x2  ["× 2" 2 "F"]]])
 
 ; serialize and deserialize transit
 
