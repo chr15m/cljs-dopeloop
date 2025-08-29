@@ -3,8 +3,7 @@
     [dopeloop.main :refer [beats-to-seconds]]
     [dopeloop.data :refer [fx-vol-slides]]
     [clojure.string :refer [includes?]]
-    ["virtual-audio-graph" :refer [bufferSource gain] :as vag]
-    ["virtual-audio-graph$default" :as createVirtualAudioGraph]
+    ["virtual-audio-graph" :refer [bufferSource gain]]
     ["wav-encoder" :as wav-encoder]
     ["spessasynth_lib/midi_parser/midi_builder.js" :refer [MIDIBuilder]]))
 
@@ -131,12 +130,6 @@
                  :channels channel-data}]
      :order [0]}))
 
-(defn lookup-node-fn
-  [node-fn]
-  (if (fn? node-fn)
-    node-fn
-    (aget vag (name node-fn))))
-
 (defn calculate-fx-note-params [note clip]
   (js/console.log "calculate-fx-note-params" note)
   (let [instrument (lookup-instrument note clip)
@@ -176,16 +169,6 @@
               hit-stop-time (or next-hit-start-time stop-time-from-duration)]
           (assoc hit :stop-time hit-stop-time)))
       all-hit-params)))
-
-(defn instantiate-audio-graph-nodes
-  [audio-graph]
-  (->> audio-graph
-       (mapv (fn [[id node]]
-               (if (vector? node)
-                 [id (apply (lookup-node-fn (first node)) (clj->js (rest node)))]
-                 [id node])))
-       (into {})
-       clj->js))
 
 (defn render-fx-note [idx note clip]
   (let [instrument (lookup-instrument note clip)
@@ -246,30 +229,6 @@
                            :startTime start-time})}))))))
        (remove nil?)
        (apply merge)))
-
-(defn play-audio-graph
-  [audio-graph]
-  (.update (createVirtualAudioGraph)
-           (instantiate-audio-graph-nodes audio-graph)))
-
-(defn stop-audio-graph
-  [virtual-audio-graph]
-  (.update virtual-audio-graph #js {}))
-
-(defn render-audio-graph-to-buffer
-  "Render a virtual-audio-graph to a buffer.
-  Takes an array of virtual-audio-graph nodes, and either:
-  * the number of seconds to render, or;
-  * the bpm, and number of beats to render.
-  Returns a rendered buffer via promise."
-  ([audio-graph seconds]
-   (let [ctx (js/OfflineAudioContext.
-               2 (* seconds 44100) 44100)
-         graph (createVirtualAudioGraph #js {:audioContext ctx})]
-     (.update graph (instantiate-audio-graph-nodes audio-graph))
-     (.startRendering ctx)))
-  ([audio-graph bpm beats]
-   (render-audio-graph-to-buffer audio-graph (beats-to-seconds bpm beats))))
 
 (defn render-audio-buffer-to-wav
   "Create a File object in wav format from the passed in audio buffer."
