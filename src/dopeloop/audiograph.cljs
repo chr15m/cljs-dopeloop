@@ -4,9 +4,6 @@
     ["virtual-audio-graph" :as vag]
     ["virtual-audio-graph$default" :as createVirtualAudioGraph]))
 
-(js/console.log "vag" vag)
-(js/console.log createVirtualAudioGraph)
-
 (defn lookup-node-fn
   [node-fn]
   (if (fn? node-fn)
@@ -24,8 +21,8 @@
        clj->js))
 
 (defn play-audio-graph
-  [audio-graph]
-  (.update (createVirtualAudioGraph)
+  [audio-graph & [old-graph]]
+  (.update (or old-graph (createVirtualAudioGraph))
            (instantiate-audio-graph-nodes audio-graph)))
 
 (defn stop-audio-graph
