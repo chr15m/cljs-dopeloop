@@ -131,7 +131,7 @@
      :order [0]}))
 
 (defn calculate-fx-note-params [note clip]
-  (js/console.log "calculate-fx-note-params" note)
+  ;(js/console.log "calculate-fx-note-params" note)
   (let [instrument (lookup-instrument note clip)
         base-start-time (beats-to-seconds (:tempo clip) (:beat note))
         swing-offset (calculate-swing-offset
@@ -157,7 +157,7 @@
                                    (+ base-hit-gain (* i vol-slide-adjust))
                                    (* base-hit-gain (js/Math.pow vol-slide-adjust i)))
                 final-gain (* (js/Math.min 1.0 fx-adjusted-gain) instrument-volume)]
-            (js/console.log "hit-gain" final-gain)
+            ;(js/console.log "hit-gain" final-gain)
             {:time (+ start-time (* tick-offset tick-duration-secs))
              :gain final-gain}))]
     (map-indexed
